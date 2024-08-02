@@ -1,74 +1,94 @@
 import React, { useState } from 'react';
-import Select from 'react-select';
 import './App.css';
-
-const options = [
-  { value: 'numbers', label: 'Numbers' },
-  { value: 'alphabets', label: 'Alphabets' },
-  { value: 'highest_alphabet', label: 'Highest Alphabet' }
-];
+import Select from 'react-select';
 
 function App() {
   const [jsonInput, setJsonInput] = useState('');
   const [response, setResponse] = useState(null);
-  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState([]);
 
+  const handleInputChange = (event) => {
+    setJsonInput(event.target.value);
+  };
+  
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError(''); // Clear previous error
     try {
-      const response = await fetch('https://your-app-name.herokuapp.com/bfhl', {
+      const parsedInput = JSON.parse(jsonInput);
+      const apiResponse = await fetch('https://bfhl-backend-aoct.onrender.com', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: jsonInput,
+        body: JSON.stringify(parsedInput),
       });
-      const data = await response.json();
+
+      if (!apiResponse.ok) {
+        throw new Error(`HTTP error! status: ${apiResponse.status}`);
+      }
+
+      const data = await apiResponse.json();
       setResponse(data);
     } catch (error) {
       console.error('Error:', error);
+      setError(error.message);
     }
   };
 
-  const filteredResponse = response ? {
-    numbers: selectedOptions.some(option => option.value === 'numbers') ? response.numbers : [],
-    alphabets: selectedOptions.some(option => option.value === 'alphabets') ? response.alphabets : [],
-    highest_alphabet: selectedOptions.some(option => option.value === 'highest_alphabet') ? response.highest_alphabet : []
-  } : null;
+  const handleFilterChange = (selectedOptions) => {
+    setFilter(selectedOptions.map(option => option.value));
+  };
+
+  const renderResponse = () => {
+    if (!response) return null;
+
+    const options = [
+      { value: 'numbers', label: 'Numbers' },
+      { value: 'alphabets', label: 'Alphabets' },
+      { value: 'highest_alphabet', label: 'Highest Alphabet' }
+    ];
+
+    const filteredResponse = {};
+    filter.forEach(key => {
+      filteredResponse[key] = response[key];
+    });
+
+    return (
+      <div>
+        <h2>Response:</h2>
+        <pre>{JSON.stringify(filteredResponse, null, 2)}</pre>
+      </div>
+    );
+  };
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>{response?.roll_number}</h1>
+        <h1>AP21110011417</h1>
         <form onSubmit={handleSubmit}>
           <textarea
+            id="jsonInput"
+            name="jsonInput"
             value={jsonInput}
-            onChange={(e) => setJsonInput(e.target.value)}
-            placeholder='Enter JSON'
-            rows={10}
-            cols={50}
+            onChange={handleInputChange}
+            placeholder="Enter JSON data"
+            rows="10"
+            cols="50"
           />
           <button type="submit">Submit</button>
         </form>
-        {response && (
-          <>
-            <Select
-              isMulti
-              options={options}
-              onChange={setSelectedOptions}
-            />
-            <div>
-              <h2>Filtered Response</h2>
-              {filteredResponse.numbers.length > 0 && (
-                <p>Numbers: {filteredResponse.numbers.join(',')}</p>
-              )}
-              {filteredResponse.alphabets.length > 0 && (
-                <p>Alphabets: {filteredResponse.alphabets.join(',')}</p>
-              )}
-              {filteredResponse.highest_alphabet.length > 0 && (
-                <p>Highest Alphabet: {filteredResponse.highest_alphabet.join(',')}</p>
-              )}
-            </div>
-          </>
-        )}
+        {error && <div className="error">{error}</div>}
+        <Select
+          isMulti
+          options={[
+            { value: 'numbers', label: 'Numbers' },
+            { value: 'alphabets', label: 'Alphabets' },
+            { value: 'highest_alphabet', label: 'Highest Alphabet' }
+          ]}
+          onChange={handleFilterChange}
+          placeholder="Select filters"
+        />
+        {renderResponse()}
       </header>
     </div>
   );
